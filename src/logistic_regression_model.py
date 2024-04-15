@@ -1,54 +1,65 @@
 import tensorflow as tf
+import pandas as pd
 import numpy as np
 import datetime
 
-# Load and prepare the MNIST dataset
-mnist = tf.keras.datasets.mnist
-(train_images, train_labels), (test_images, test_labels) = mnist.load_data()
 
-# Normalize and flatten the images
-train_images = (train_images.reshape([-1, 784]) / 255.0).astype(np.float32)
-test_images = (test_images.reshape([-1, 784]) / 255.0).astype(np.float32)
+train_data = pd.read_csv("data/mnist_train.csv", header=None)
+test_data = pd.read_csv("data/mnist_test.csv", header=None)
+
+# test data
+test_images = test_data.iloc[:, 1:].values
+test_labels = test_data.iloc[:, 0].values
+
+# train data
+train_images = train_data.iloc[:, 1:].values
+train_labels = train_data.iloc[:, 0].values
+
+# normalize and flatten data
+train_images = (train_images / 255.0).astype(np.float32)
+test_images = (test_images / 255.0).astype(np.float32)
+
+
+# initialize weights and bias
+W = tf.Variable(tf.random.normal([784, 10], stddev=0.01), name="weights")
+b = tf.Variable(tf.zeros([10]), name="biases")
+
 
 # Convert labels to one-hot encoding
 train_labels = tf.one_hot(train_labels, depth=10)
 test_labels = tf.one_hot(test_labels, depth=10)
 
-# Initialize weights and biases
-W = tf.Variable(tf.random.normal([784, 10], stddev=0.01), name="weights")
-b = tf.Variable(tf.zeros([10]), name="biases")
 
-
-# Define the model function
+# define the model function
 def model(x):
     return tf.matmul(x, W) + b
 
 
-# Loss function
+# loss function
 def compute_loss(logits, labels):
     return tf.reduce_mean(
         tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=labels)
     )
 
 
-# Set up logging for TensorBoard
+# set up TensorBoard loggin
 current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 train_log_dir = "logs/gradient_tape/" + current_time + "/train"
 train_summary_writer = tf.summary.create_file_writer(train_log_dir)
 
-# Define the optimizer
+# define the optimiser
 optimizer = tf.optimizers.SGD(learning_rate=0.1)
 
-# Training parameters
+# training parameters
 num_epochs = 10
 batch_size = 100
 num_batches = train_images.shape[0] // batch_size
 
-# Training loop
-for epoch in range(num_epochs):
+# training loop
+for epoch in range(num_batches):
     for batch_index in range(num_batches):
-        batch_start = batch_index * batch_size
-        batch_end = batch_start + batch_size
+        batch_start = batch_size * batch_index
+        batch_end = batch_size + batch_index
         x_batch = train_images[batch_start:batch_end]
         y_batch = train_labels[batch_start:batch_end]
 
@@ -56,8 +67,8 @@ for epoch in range(num_epochs):
             logits = model(x_batch)
             loss = compute_loss(logits, y_batch)
 
-        gradients = tape.gradient(loss, [W, b])
-        optimizer.apply_gradients(zip(gradients, [W, b]))
+        gradient = tape.gradient(loss, [W, b])
+        optimizer.apply_gradients(zip(gradient, [W, b]))
 
         with train_summary_writer.as_default():
             tf.summary.scalar("loss", loss, step=epoch * num_batches + batch_index)
@@ -66,9 +77,5 @@ for epoch in range(num_epochs):
             )
             tf.summary.histogram("weights", W, step=epoch * num_batches + batch_index)
             tf.summary.histogram("biases", b, step=epoch * num_batches + batch_index)
-
-    print(f"Epoch {epoch + 1}, Loss: {loss.numpy()}")
-
-# Run TensorBoard
-# %load_ext tensorboard
-# %tensorboard --logdir logs/gradient_tape
+    print("epoch")
+print(f"Epoch {epoch +1}, Loss:{loss.numpy()}")
