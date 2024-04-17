@@ -1,3 +1,4 @@
+MNIST/
 venv/
 *.pyc
 .DS_Store
