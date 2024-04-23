@@ -4,3 +4,4 @@ venv/
 .DS_Store
 data/
 logs/
+cifar-10-batches-py/
